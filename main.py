@@ -8,12 +8,13 @@ import torchvision
 import torchvision.transforms.v2 as tfs
 from PIL import Image
 import numpy as np
+from tqdm import tqdm
 
 from Digits_dataset_class import DigitsDataset
 from Linear_model_class import LinearModel
 
 
-epochs = 10
+epochs = 2
 batch_size = 32
 lr = 0.01
 to_tensor = tfs.ToImage()
@@ -22,6 +23,7 @@ model = LinearModel()
 
 d_train = DigitsDataset('C:\ML\ml\pytorch\digits_rec\dataset',
                         train=True, transform_func=to_tensor)
+
 train_data = data.DataLoader(d_train, batch_size, shuffle=True)
 
 optimizer = optim.Adam(model.parameters(), lr=lr)
@@ -30,13 +32,23 @@ loss_func = nn.CrossEntropyLoss()
 model.train()
 
 for _ in range(epochs):
-    for x, y in train_data:
+    loss_mean = 0
+    lm_count = 0
+    train_tqdm = tqdm(train_data, leave=True)
+
+    for x, y in train_tqdm:
         predict = model(x)
         loss = loss_func(predict, y)
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+
+        lm_count += 1
+        loss_mean = 1 / lm_count * loss.item() + (1 - 1 / lm_count) * loss_mean
+
+        train_tqdm.set_description(
+            f'Epoch [{_ + 1}/{epochs}], loss_mean={loss_mean:.3f}')
     print(_)
 
 
@@ -52,7 +64,7 @@ for x, y in test_data:
     with torch.no_grad():
         pred = model(x).argmax(dim=1)
         targ = y.argmax(dim=1)
-        Q += torch.sum(pred != targ).item()
+        Q += torch.sum(pred == targ).item()
 
 Q /= len(d_test)
 print(Q)
