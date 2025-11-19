@@ -6,6 +6,7 @@ import torch.optim as optim
 import torch.utils.data as data
 import torchvision
 import torchvision.transforms.v2 as tfs
+from torchvision.datasets import ImageFolder
 from PIL import Image
 import numpy as np
 from tqdm import tqdm
@@ -17,12 +18,21 @@ from Linear_model_class import LinearModel
 epochs = 2
 batch_size = 32
 lr = 0.01
-to_tensor = tfs.ToImage()
+transforms = tfs.Compose([tfs.ToImage(),
+                          tfs.Grayscale(),
+                          tfs.ToDtype(torch.float32, scale=True),
+                          tfs.Lambda(lambda _img: _img.ravel())
+                          ])
 
 model = LinearModel()
 
-d_train = DigitsDataset('C:\ML\ml\pytorch\digits_rec\dataset',
-                        train=True, transform_func=to_tensor)
+# d_train = DigitsDataset('C:\ML\ml\pytorch\digits_rec\dataset',
+#                         train=True, transform_func=to_tensor)  # My dataset class
+
+
+# ImageFolder dataset class
+d_train = ImageFolder('digits_rec/dataset/train', transform=transforms)
+
 
 train_data = data.DataLoader(d_train, batch_size, shuffle=True)
 
@@ -55,26 +65,37 @@ for _ in range(epochs):
 model.eval()
 
 
-d_test = DigitsDataset('C:\ML\ml\pytorch\digits_rec\dataset',
-                       train=False, transform_func=to_tensor)
+# If dataset class is DigitsDataset
+# d_test = DigitsDataset('C:\ML\ml\pytorch\digits_rec\dataset',
+#                        train=False, transform_func=transforms)
+
+
+# If dataset class is ImageFolder
+d_test = ImageFolder('digits_rec/dataset/test', transform=transforms)
 
 test_data = data.DataLoader(d_test, batch_size=500, shuffle=False)
+
+
 Q = 0
 for x, y in test_data:
     with torch.no_grad():
         pred = model(x).argmax(dim=1)
-        targ = y.argmax(dim=1)
-        Q += torch.sum(pred == targ).item()
+        # targ = y.argmax(dim=1) # If dataset class is DigitsDataset
+        # Q += torch.sum(pred == targ).item()
+        Q += torch.sum(pred == y).item()  # If dataset class is ImageFolder
+
 
 Q /= len(d_test)
 print(Q)
 
+
+# Showing one image, it's target and pediction
 test_idx = 287
 
 test_img, test_targ = d_test[test_idx]
 
 test_pred = model(test_img)
-test_pred = test_pred.argmax()
+test_pred = test_pred
 
 print('targ:', test_targ.argmax(), 'pred:', test_pred)
 
